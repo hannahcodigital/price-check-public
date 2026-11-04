@@ -1,0 +1,77 @@
+{% set s=r.res %}{% set m=r.market %}{% set i=r.input %}
+{% macro R(x) %}R{{ "{:,.0f}".format(x|float) }}{% endmacro %}
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pricing report: {{ i.service }} | Hannah &amp; Co</title><link rel="stylesheet" href="/static/base.css">
+<style>
+@page{size:A4;margin:7mm 9mm}
+.rep{max-width:900px;margin:0 auto;padding:30px 22px 60px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ox);padding-bottom:14px}
+.verdict{background:var(--ox);color:var(--iv);padding:26px 28px;margin:22px 0}
+.verdict h1{font-size:clamp(28px,5vw,42px);margin:6px 0 8px}.verdict p{opacity:.9;font-size:15px}
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;background:var(--bl);color:var(--ch)}
+.ladder{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--ln);background:#fff8f0}
+.ladder div{padding:16px;border-right:1px solid var(--ln)}.ladder div:last-child{border:0}
+.ladder b{display:block;font-family:PF,serif;font-weight:400;font-size:28px;color:var(--ox)}.ladder .hi{background:var(--ox);color:var(--iv)}.ladder .hi b{color:var(--iv)}
+.ladder span{font-size:12px}
+h2{font-size:24px;color:var(--ox);margin:28px 0 10px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stats div{border-top:1px solid var(--ch);padding-top:8px;font-size:13px}.stats b{display:block;font:400 24px PF,serif}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th{text-align:left;font-weight:500;border-bottom:1px solid var(--ch);padding:6px 4px}
+td{border-bottom:1px solid var(--ln);padding:6px 4px;vertical-align:top}td a{color:var(--ox);word-break:break-all}
+.thin{background:#efe2d2;border-left:4px solid var(--ox);padding:12px 14px;font-size:14px}
+.bar{position:relative;height:10px;background:var(--bl);margin:26px 0 30px}.bar i{position:absolute;top:-8px;width:3px;height:26px;background:var(--ch)}
+.bar i span{position:absolute;top:28px;left:-30px;width:80px;font-size:11px;text-align:center}.bar i.you{background:var(--ox)}.bar i.you span{top:-20px;color:var(--ox);font-weight:600}
+.recs{counter-reset:c}.recs div{padding:12px 0 12px 44px;border-bottom:1px solid var(--ln);position:relative;font-size:14px}
+.recs div:before{counter-increment:c;content:counter(c);position:absolute;left:0;top:10px;font:400 30px PF,serif;color:var(--ox)}.recs b{display:block;font-size:15px}
+.cta{display:flex;justify-content:space-between;align-items:center;gap:20px;border:1px solid var(--ox);padding:22px;margin-top:26px}
+.cta h3{font-size:26px}.how{font-size:11.5px;opacity:.75;margin-top:20px;line-height:1.5}
+.tools{display:flex;gap:10px;margin:18px 0}
+@media(max-width:640px){.ladder{grid-template-columns:1fr 1fr}.ladder div:nth-child(2){border-right:0}.ladder div{border-bottom:1px solid var(--ln)}.stats{grid-template-columns:1fr 1fr}.cta{flex-direction:column;align-items:flex-start}.hide-m{display:none}}
+@media print{body{font-size:11px!important;line-height:1.4}.ladder div{padding:9px}.ladder b{font-size:21px}.stats b{font-size:18px}.stats div{font-size:11px}.bar{margin:20px 0 24px}.cta h3{font-size:20px}.cta p{font-size:11.5px!important}.how{font-size:8.5px;margin-top:6px}.cta{margin-top:8px!important}.top{padding-bottom:8px}td,th{padding:2px 4px}.recs div{padding:4px 0 4px 36px!important}.recs div:before{font-size:22px!important;top:4px!important}.cta{padding:10px 14px!important}.ladder div{padding:7px 9px!important}.stats b{font-size:16px!important}h2{margin:9px 0 4px!important}.verdict p{font-size:12px}.tools{display:none}.rep{padding:0}body{background:var(--iv);-webkit-print-color-adjust:exact;print-color-adjust:exact}h2{margin:12px 0 5px;font-size:18px}.verdict{padding:12px 18px;margin:10px 0}.verdict h1{font-size:26px}.bar{margin:16px 0 20px}.recs div{padding:5px 0 5px 36px}table{font-size:10px}.recs div{padding:7px 0 7px 40px;font-size:12.5px}.cta{padding:14px;margin-top:14px}}
+.prem{background:var(--ox);color:var(--iv);padding:24px;margin-top:26px}.eq{font-size:13.5px;opacity:.9}.eq b{font-weight:600}
+.lev{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}.lev div{border-top:1px solid rgba(246,239,229,.35);padding-top:8px;font-size:13px}.lev .cap{color:var(--bl)}.lev p{margin:4px 0;font-weight:500}.lev ul{padding-left:16px;opacity:.9}
+.pp{display:grid;grid-template-columns:.6fr 1.4fr;gap:20px;background:var(--iv);color:var(--ch);padding:16px}.pp b{display:block;font:400 34px PF,serif;color:var(--ox)}.pp ol{padding-left:18px;font-size:13px;margin-top:4px}
+@media(max-width:640px){.lev,.pp{grid-template-columns:1fr}}
+@media print{.prem{break-before:page;margin-top:0}.how{break-inside:avoid}}
+</style></head><body><div class="rep">
+<div class="top"><div><span class="wm">HANNAH &amp; CO.</span><div class="cap" style="color:var(--ox);margin-top:4px">The Price Check</div></div>
+<div style="text-align:right;font-size:12.5px">{{ i.service|capitalize }} · {{ i.area }}<br>{{ r.created }}</div></div>
+{% if not pdf %}<div class="tools"><a class="btn" href="/report/{{ r.id }}.pdf">Download PDF</a><a class="btn ghost" href="/">New check</a></div>{% endif %}
+<div class="verdict"><span class="pill">Your verdict</span><h1>{{ s.verdict }}.</h1>
+<p>You charge {{ R(s.price) }} per {{ s.unit }}{% if s.vat %} incl. VAT{% endif %}. To pay yourself {{ R(i.salary) }} a month and cover {{ R(i.costs) }} in costs, your business needs at least {{ R(s.floor) }}.
+{% if r.pos %} Locally you sit {{ r.pos.text }}.{% endif %}</p></div>
+<div class="ladder">
+<div><span>Break-even</span><b>{{ R(s.breakeven) }}</b><span>Costs only, no salary</span></div>
+<div><span>Floor price</span><b>{{ R(s.floor) }}</b><span>Costs + your salary</span></div>
+<div class="hi"><span>Recommended</span><b>{{ R(s.recommended) }}</b><span>Floor + {{ s.buffer }}% buffer</span></div>
+<div><span>Premium</span><b>{{ R(s.premium) }}</b><span>+{{ s.uplift_pct }}% for {{ s.years|int }} yrs experience</span></div></div>
+<p style="font-size:12px;margin-top:6px">Prices per {{ s.unit }}{% if s.vat %}, including 15% VAT{% endif %}, rounded up to the nearest R10.</p>
+<h2>Your numbers</h2><div class="stats">
+<div>True hourly rate<b>{{ R(s.true_hourly) }}</b>after costs, per working hour</div>
+<div>{{ s.noun|capitalize }} needed at today's price<b>{{ s.needed_now }} {{ s.cap_label }}</b>{{ s.capacity_pct_now }}% of your capacity</div>
+<div>{{ s.noun|capitalize }} needed at recommended<b>{{ s.needed_rec }} {{ s.cap_label }}</b>{{ s.capacity_pct_rec }}% of your capacity</div></div>
+<h2>What businesses near you publish</h2><p style="font-size:12px;margin-bottom:6px">The range uses real businesses only. Guides and directories are listed separately as reference.</p>
+{% if m and not m.thin %}
+<div class="bar">{% set lo=[m.low, s.price]|min %}{% set hi=[m.high, s.price]|max %}{% set sp=(hi-lo) or 1 %}
+<i style="left:{{ ((m.median-lo)/sp*100)|round(1) }}%"><span>Median {{ R(m.median) }}</span></i>
+<i class="you" style="left:{{ ((s.price-lo)/sp*100)|round(1) }}%"><span>You</span></i></div>
+<p style="font-size:13.5px">{{ m.n }} local businesses, typical prices from {{ R(m.low) }} to {{ R(m.high) }}, median {{ R(m.median) }}. {{ r.pos.below }} of {{ r.pos.total }} businesses charge less than you.</p>
+{% elif m %}<div class="thin"><b>The data is thin.</b> We found published per-{{ s.unit }} prices from only {{ m.n }} local business{{ '' if m.n==1 else 'es' }} for "{{ i.service }}" around {{ i.area }}, so we are not giving you a market range. Your pricing above is based on your own numbers, which is the safer guide anyway.</div>{% endif %}
+{% if m and m.sources %}<table style="margin-top:12px"><tr><th>Business</th><th>Prices seen</th><th class="hide-m">Typical</th></tr>
+{% for x in m.sources %}<tr><td><a href="{{ x.url }}">{{ x.domain }}</a>{% if x.from!='page' %} <small>(search snippet)</small>{% endif %}</td><td>{{ R(x.low) }}{% if x.high!=x.low %} to {{ R(x.high) }}{% endif %}</td><td class="hide-m">{{ R(x.typical) }}</td></tr>{% endfor %}</table>{% endif %}
+{% if m and m.refs %}<div class="cap" style="margin:12px 0 4px;color:var(--ox)">Reference: guides and directories (not in the range)</div><table><tr><th>Source</th><th>Prices quoted</th></tr>
+{% for x in m.refs %}<tr><td><a href="{{ x.url }}">{{ x.domain }}</a></td><td>{{ R(x.low) }}{% if x.high!=x.low %} to {{ R(x.high) }}{% endif %}</td></tr>{% endfor %}</table>{% endif %}
+{% if m %}<p style="font-size:11.5px;margin-top:6px">Checked {{ m.checked }}. Published prices only, found by a live web search; prices change and may cover different versions of the service. Follow the links to check.</p>{% endif %}
+{% set o=r.offer %}<section class="prem"><div class="cap" style="color:var(--bl)">Your premium offer</div>
+<h2 style="color:var(--iv);margin-top:6px">{{ o.name }}</h2>
+<p class="eq">Value = <b>Dream outcome</b> × <b>Likelihood it works</b> ÷ (<b>Time delay</b> × <b>Effort and sacrifice</b>). Raise the top, shrink the bottom, and a higher price feels like a better deal.</p>
+<div class="lev">{% for t,line,items in o.levers %}<div><span class="cap">{{ '↑' if loop.index<3 else '↓' }} {{ t }}</span><p>{{ line }}</p><ul>{% for it in items %}<li>{{ it }}</li>{% endfor %}</ul></div>{% endfor %}</div>
+<div class="pp"><div><span class="cap">Suggested package price</span><b>{{ R(o.price) }}</b><small>per {{ s.unit }}{% if s.vat %} incl. VAT{% endif %}</small></div>
+<div><span class="cap">Three bonuses to include</span><ol>{% for b in o.bonuses %}<li>{{ b }}</li>{% endfor %}</ol></div></div>
+<p class="how" style="color:var(--iv);opacity:.8">Hannah &amp; Co working rule, not market data: package price = your premium price ({{ R(s.premium) }}) + {{ o.uplift_pct }}% (15% for the guarantee and extras{% if o.has_proof %}, plus 10% because you have proof to show{% else %}; add 10% once you can show proof{% endif %}), rounded up to the nearest R50. That is {{ R(o.vs_rec) }} above your recommended price. Only promise a guarantee you can afford to honour.</p></section>
+<h2>Your three next steps</h2><div class="recs">{% for t,b in r.recs %}<div><b>{{ t }}</b>{{ b }}</div>{% endfor %}</div>
+<div class="cta"><div><div class="cap" style="color:var(--ox)">Hannah &amp; Co Growth Check · R1,500</div><h3>Want help making the new price stick?</h3>
+<p style="font-size:14px">A one-on-one session with Hannah to go through this report, your offer and how to tell your clients.</p></div>
+<a class="btn" href="/#growth-check">Book my Growth Check</a></div>
+<p class="how"><b>How we worked this out.</b> Capacity: {{ s.capacity|int if s.capacity==s.capacity|int else s.capacity }} {% if s.basis=='month' %}clients at once{% else %}{{ s.noun }} {{ s.cap_label }}{% endif %}{% if s.basis!='month' %} for {{ s.weeks|int }} weeks a year{% endif %}. We assume {{ s.utilisation }}% of that capacity gets booked and paid, because no diary is full all year. Break-even = yearly costs ÷ realistic bookings. Floor = (yearly costs + yearly salary) ÷ realistic bookings. Recommended = floor + {{ s.buffer }}% for income tax, leave, slow months and reinvesting. Premium adds an experience uplift: 0% under 2 years, 10% for 2 to 5, 20% for 5 to 10, 30% for 10 or more. These are Hannah &amp; Co working rules, not market statistics.{% if s.vat %} VAT is removed before working out what you keep, then added back to the prices shown.{% endif %} This report is guidance, not financial or tax advice.</p>
+</div>{% if autoprint %}<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),400))</script>{% endif %}</body></html>

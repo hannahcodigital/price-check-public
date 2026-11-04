@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Almost there | The Price Check by Hannah &amp; Co</title><link rel="stylesheet" href="/static/base.css">
+<style>.box{max-width:620px;margin:40px auto;padding:28px 24px;background:#fff8f0;border:1px solid var(--ln)}
+.ref{font-family:PF,serif;font-size:34px;color:var(--ox);letter-spacing:.06em}.eft{white-space:pre-line;font-size:14px;border-top:1px solid var(--ln);margin-top:16px;padding-top:12px}
+.btn{display:block;text-align:center;margin:18px 0}</style></head><body>
+<div class="box"><div class="cap" style="color:var(--ox)">Your report is built</div>
+<h2>Pay R{{ price }} to unlock it</h2>
+<p>Use this reference when you pay, so we can match your payment:</p>
+<div class="ref">{{ r.ref }}</div>
+{% if pay_link %}<a class="btn" href="{{ pay_link }}" target="_blank" rel="noopener">Pay R{{ price }} now</a>{% endif %}
+{% if eft %}<div class="eft"><b>Or pay by EFT</b>
+{{ eft }}
+Reference: {{ r.ref }}</div>{% endif %}
+<p class="note" style="margin-top:16px">Keep this page open or bookmark it. It unlocks by itself as soon as we confirm your payment, usually within a few hours during business hours (South African time). {% if r.input.email %}We'll also email the link to {{ r.input.email }}.{% endif %}</p>
+</div>
+<script>setInterval(async()=>{try{const s=await fetch('/api/status/{{ r.id }}').then(r=>r.json());if(s.paid)location.reload()}catch(e){}},20000)</script>
+</body></html>

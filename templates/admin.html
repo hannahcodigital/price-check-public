@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Price Check orders</title><link rel="stylesheet" href="/static/base.css">
+<style>table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:8px;border-bottom:1px solid var(--ln);text-align:left}.w{max-width:1000px;margin:30px auto;padding:0 16px}</style></head><body><div class="w">
+<h2>Price Check orders</h2><p>Match the reference on your bank statement, then press Unlock. The customer's page opens by itself.</p>
+<table><tr><th>Date</th><th>Reference</th><th>Email</th><th>Service, area</th><th>Status</th><th></th></tr>
+{% for r in reps %}<tr><td>{{ r.ts or r.created }}</td><td><b>{{ r.ref or '-' }}</b></td><td>{{ r.input.email }}</td><td>{{ r.input.service }}, {{ r.input.area }}</td>
+<td>{% if r.paid is not defined or r.paid %}Paid{% else %}Waiting{% endif %}</td>
+<td>{% if r.paid is defined and not r.paid %}<form method="post" action="/admin/unlock/{{ r.id }}"><input type="hidden" name="key" value="{{ key }}"><button class="btn">Unlock</button></form>{% else %}<a href="/report/{{ r.id }}" target="_blank">View</a>{% endif %}</td></tr>{% endfor %}
+</table></div></body></html>
