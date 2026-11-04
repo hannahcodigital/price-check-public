@@ -1,0 +1,24 @@
+# Render Blueprint for The Price Check (free tier). Secrets are entered in the Render dashboard, never here.
+services:
+  - type: web
+    name: price-check
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python decode_fonts.py
+    startCommand: gunicorn -w 2 -t 120 -b 0.0.0.0:$PORT app:app
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: PAYWALL
+        value: "1"
+      - key: PRICE
+        value: "99"
+      - key: DATABASE_URL     # Neon free Postgres connection string (permanent free plan, no card)
+        sync: false
+      - key: PAY_LINK         # bank payment request link for R99
+        sync: false
+      - key: EFT_DETAILS
+        sync: false
+      - key: ADMIN_KEY        # long random secret for /admin
+        sync: false

@@ -1,0 +1,13 @@
+*.log
+*.pyc
+*.secret
+.admin_key
+.env
+.env*
+__pycache__/
+renders/
+reports/
+secrets/
+tunnel.py
+.render-env.json
+static/*.ttf
