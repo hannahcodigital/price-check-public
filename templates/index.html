@@ -14,6 +14,12 @@ input:focus,select:focus{outline:2px solid var(--ox);outline-offset:-1px}
 .seg{display:flex;gap:8px;margin-top:6px}.seg label{flex:1;margin:0}.seg input{display:none}
 .seg span{display:block;text-align:center;padding:12px 6px;border:1px solid rgba(37,35,35,.25);cursor:pointer;font-weight:400}
 .seg input:checked+span{background:var(--ox);color:var(--iv);border-color:var(--ox)}
+.checks{display:grid;gap:8px;margin-top:8px}.checks label{display:flex;align-items:flex-start;gap:10px;margin:0;font-weight:400;font-size:14px}
+.checks input{width:auto;margin:3px 0 0;padding:0;accent-color:var(--ox)}
+.est{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12.5px;font-weight:400;opacity:.8}
+.est input{width:auto;margin:0;padding:0;accent-color:var(--ox)}
+.money-block{border-top:1px solid var(--ln);padding-top:14px;margin-top:4px}
+#why-box{display:none;background:#efe2d2;padding:14px 14px 6px;margin:8px 0 14px}
 aside{position:sticky;top:20px;align-self:start;background:var(--ox);color:var(--iv);padding:32px}
 aside h3{font-size:30px;margin:10px 0 16px}aside li{list-style:none;padding:10px 0;border-top:1px solid rgba(246,239,229,.2);font-size:14.5px}
 aside .price{font-family:PF,serif;font-size:54px;margin-top:18px}
@@ -44,12 +50,37 @@ aside .price{font-family:PF,serif;font-size:54px;margin-top:18px}
 <label id="w-dur"><span id="l-dur">How long one booking takes (hours)</span><input name="duration" type="number" min="0.25" step="0.25" value="1"></label></div>
 </fieldset>
 <fieldset><legend>Your capacity</legend>
-<div class="row"><label><span id="l-cap">Bookings you can do per week</span><small>At most, without burning out</small><input name="capacity" type="number" min="1" step="0.5" required></label>
+<div class="row"><label><span id="l-cap">Bookings you can do per week</span><small>At most, without burning out</small>
+<input name="capacity" id="capacity" type="number" min="1" step="0.5">
+<label class="est"><input type="checkbox" name="capacity_estimate" id="capacity_estimate" value="1"> I'm not sure, estimate for me</label>
+</label>
 <label>Weeks you work per year<small>52 minus leave and holidays</small><input name="weeks" type="number" min="1" max="52" value="46" required></label></div>
 </fieldset>
 <fieldset><legend>Your money</legend>
-<div class="row"><label>Monthly business costs (R)<small>Rent, products, software, staff, transport</small><input name="costs" type="number" min="0" required></label>
-<label>What you want to pay yourself per month (R)<small>Before personal tax</small><input name="salary" type="number" min="0" required></label></div>
+<p style="font-size:13.5px;margin:0 0 12px;opacity:.8">Business costs and what you pay yourself are separate. Covering rent and tools is not the same as taking home a salary.</p>
+<label>Monthly business costs (R)<small>Rent, products, software, staff, transport. Not your own pay.</small>
+<input name="costs" id="costs" type="number" min="0">
+<label class="est"><input type="checkbox" name="costs_estimate" id="costs_estimate" value="1"> I'm not sure, estimate for me</label>
+</label>
+<label>What you currently pay yourself per month (R)<small>Before personal tax. Put 0 if you take nothing home as pay.</small>
+<input name="salary" id="salary" type="number" min="0">
+<label class="est"><input type="checkbox" name="salary_estimate" id="salary_estimate" value="1"> I'm not sure, estimate for me</label>
+</label>
+<div id="why-box">
+<label style="margin-bottom:6px">Why aren't you paying yourself (or why is it low)? <small>Pick all that apply</small></label>
+<div class="checks">
+<label><input type="checkbox" name="no_pay_reasons" value="reinvest"> Reinvesting in the business</label>
+<label><input type="checkbox" name="no_pay_reasons" value="home_office"> Home or office costs</label>
+<label><input type="checkbox" name="no_pay_reasons" value="debt"> Covering debt</label>
+<label><input type="checkbox" name="no_pay_reasons" value="irregular"> Irregular income</label>
+<label><input type="checkbox" name="no_pay_reasons" value="not_enough"> There isn't enough left after expenses</label>
+<label><input type="checkbox" name="no_pay_reasons" value="other"> Other</label>
+</div>
+</div>
+<label>What you would like to pay yourself per month (R)<small>The take-home number we price toward. Separate from business costs.</small>
+<input name="salary_target" id="salary_target" type="number" min="0">
+<label class="est"><input type="checkbox" name="salary_target_estimate" id="salary_target_estimate" value="1"> I'm not sure, estimate for me</label>
+</label>
 <label>Are you VAT registered?<div class="seg"><label><input type="radio" name="vat" value="0" checked><span>No</span></label><label><input type="radio" name="vat" value="1"><span>Yes, my prices include VAT</span></label></div></label>
 </fieldset>
 <fieldset><legend>Your premium offer <small style="font:400 13px Inter;color:var(--ch);opacity:.6">(optional)</small></legend>
@@ -58,7 +89,7 @@ aside .price{font-family:PF,serif;font-size:54px;margin-top:18px}
 <div class="row"><label>How fast do you deliver?<input name="speed" placeholder="e.g. done in one sitting"></label>
 <label>What do clients find annoying or hard?<input name="pain" placeholder="e.g. long waits, buying their own hair"></label></div></fieldset>
 <button class="btn" style="width:100%">Get my report</button>
-<p class="note">Market prices come from a live web search of published prices. We show every source and the date it was checked.</p>
+<p class="note">Market prices come from a live web search of published prices. We show every source and the date it was checked. "Estimate for me" uses Hannah &amp; Co working rules, labelled clearly in your report.</p>
 </form>
 <aside><div class="cap">What you get</div><h3>A one-page pricing report with your name on it</h3><ul>
 <li>Your true hourly rate, break-even and floor price</li><li>A recommended price and a premium price for your experience</li>
@@ -67,7 +98,7 @@ aside .price{font-family:PF,serif;font-size:54px;margin-top:18px}
 </div></div>
 <div class="gate" id="g"><div class="card" id="gc">
 <div class="cap" style="color:var(--ox)">Step 2 of 2</div><h2>Your report is ready to build</h2>
-<p>R{{ price }} once-off for the full report and PDF. We build it now, then you pay by bank payment link or EFT and it unlocks.</p>
+<p>R{{ price }} once-off for the full report and PDF. We build it now, then you pay by bank payment link or EFT and it opens.</p>
 {% if not paywall %}<div class="demo"><b>Demo mode:</b> payments are not connected yet. Pressing the button skips payment.</div>{% endif %}
 <label>Email for your copy<input id="em" type="email" required placeholder="you@business.co.za"></label>
 <button class="btn" id="pay" style="width:100%">Build my report</button>
@@ -77,9 +108,23 @@ const f=document.getElementById('f'),g=document.getElementById('g');
 const L={service:['Your current price per booking (R)','How long one booking takes (hours)','Bookings you can do per week',1],
 hour:['Your current hourly rate (R)','',"Billable hours you can do per week",0],
 month:['Your monthly fee per client (R)','Hours you spend per client each month','Clients you can handle at once',1]};
-f.addEventListener('change',()=>{const b=f.basis.value,l=L[b];document.getElementById('l-price').textContent=l[0];document.getElementById('l-dur').textContent=l[1];document.getElementById('l-cap').textContent=l[2];document.getElementById('w-dur').style.display=l[3]?'':'none'});
-let data;f.addEventListener('submit',e=>{e.preventDefault();data=Object.fromEntries(new FormData(f));data.vat=data.vat==='1';g.classList.add('on')});
+function syncBasis(){const b=f.basis.value,l=L[b];document.getElementById('l-price').textContent=l[0];document.getElementById('l-dur').textContent=l[1];document.getElementById('l-cap').textContent=l[2];document.getElementById('w-dur').style.display=l[3]?'':'none'}
+f.addEventListener('change',e=>{if(e.target.name==='basis')syncBasis(); if(e.target.name==='salary'||e.target.name==='salary_estimate')syncWhy(); if(e.target.type==='checkbox'&&e.target.name.endsWith('_estimate'))syncEstimate(e.target)});
+function syncEstimate(cb){const id=cb.id.replace('_estimate','');const inp=document.getElementById(id);if(!inp)return;if(cb.checked){inp.value='';inp.required=false;inp.disabled=true;inp.placeholder='We will estimate this'}else{inp.disabled=false;inp.placeholder='';inp.required=!(id==='salary'||id==='salary_target'||id==='costs'||id==='capacity')}}
+function syncWhy(){const est=document.getElementById('salary_estimate').checked;const v=parseFloat(document.getElementById('salary').value);const show=est||(!isNaN(v)&&v<=0)||(!est&&document.getElementById('salary').value==='' );document.getElementById('why-box').style.display=show?'block':'none'}
+// Required rules: capacity/costs/salary can be estimate OR filled
+function moneyOk(){const pairs=[['costs','costs_estimate'],['capacity','capacity_estimate'],['salary','salary_estimate'],['salary_target','salary_target_estimate']];
+for(const [id,eid] of pairs){const inp=document.getElementById(id),cb=document.getElementById(eid);if(cb.checked)continue;if(inp.value===''||inp.value===null){inp.focus();inp.reportValidity?.();alert('Fill in '+id.replace('_',' ')+' or tick "I\'m not sure, estimate for me".');return false}}return true}
+let data;f.addEventListener('submit',e=>{e.preventDefault();if(!moneyOk())return;syncWhy();
+const fd=new FormData(f);data=Object.fromEntries(fd);data.vat=data.vat==='1';
+data.no_pay_reasons=[...f.querySelectorAll('input[name="no_pay_reasons"]:checked')].map(x=>x.value);
+['costs_estimate','capacity_estimate','salary_estimate','salary_target_estimate'].forEach(k=>{data[k]=!!f.querySelector('#'+k)?.checked});
+// Drop disabled empty fields so the server can estimate
+['costs','capacity','salary','salary_target'].forEach(k=>{if(data[k+'_estimate']) delete data[k]});
+g.classList.add('on')});
 document.getElementById('pay').onclick=async()=>{const em=document.getElementById('em');if(!em.checkValidity()||!em.value){em.reportValidity();return}data.email=em.value;
 document.getElementById('gc').innerHTML='<div class="cap" style="color:var(--ox)">Working on it</div><h2>Checking prices near you</h2><p>Searching published prices for <b>'+data.service.replace(/</g,'')+'</b> in '+data.area.replace(/</g,'')+'. This takes about 30 seconds.</p><div class="prog"><i></i></div>';
 const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(r=>r.json());location.href='/report/'+r.id};
+syncBasis();syncWhy();
+['costs_estimate','capacity_estimate','salary_estimate','salary_target_estimate'].forEach(id=>{const cb=document.getElementById(id);if(cb)syncEstimate(cb)});
 </script></body></html>

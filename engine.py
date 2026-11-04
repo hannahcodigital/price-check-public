@@ -4,19 +4,121 @@ import math
 VAT = 0.15
 UTILISATION = 0.75      # realistic share of your capacity that actually gets booked and paid
 BUFFER = 0.20           # recommended price = floor + 20% for tax, leave, slow months and growth
+
+# Hannah & Co working estimates when the owner picks "I'm not sure".
+# Shown clearly as estimates in the report. Not market statistics.
+ESTIMATE = {
+    "costs": 2500,          # monthly: software, transport, products, small rent share
+    "salary_target": 8000,  # monthly take-home the owner would like
+    "salary_current": 0,    # if unsure what they take now, treat as unpaid
+    "capacity": {
+        "service": 8,       # bookings per week
+        "hour": 20,         # billable hours per week
+        "month": 4,         # clients at once
+    },
+}
+
+REASON_LABELS = {
+    "reinvest": "reinvesting in the business",
+    "home_office": "home or office costs",
+    "debt": "covering debt",
+    "irregular": "irregular income",
+    "not_enough": "not enough left after expenses",
+    "other": "other reasons",
+}
+
 def experience_uplift(y):
     return 0.0 if y < 2 else 0.10 if y < 5 else 0.20 if y < 10 else 0.30
 
 def r10(x):  # round up to a clean R10 price
     return int(math.ceil(x / 10.0) * 10)
 
+def _f(v, default=0.0):
+    try:
+        if v is None or v == "":
+            return float(default)
+        return float(v)
+    except (TypeError, ValueError):
+        return float(default)
+
+def _truthy(v):
+    return str(v).lower() in ("1", "true", "yes", "on")
+
+def _reasons(d):
+    raw = d.get("no_pay_reasons") or d.get("reasons") or []
+    if isinstance(raw, str):
+        raw = [x.strip() for x in raw.split(",") if x.strip()]
+    out = []
+    for r in raw:
+        key = str(r).strip()
+        if key in REASON_LABELS and key not in out:
+            out.append(key)
+    return out
+
+def apply_estimates(d):
+    """Resolve 'I'm not sure' flags into stated Hannah & Co working estimates.
+    Returns (resolved_input_dict, estimates_used_dict).
+    """
+    basis = d.get("basis", "service")
+    est = {}
+    out = dict(d)
+
+    if _truthy(d.get("costs_estimate")) or str(d.get("costs", "")).strip() == "":
+        out["costs"] = ESTIMATE["costs"]
+        est["costs"] = ESTIMATE["costs"]
+
+    if _truthy(d.get("capacity_estimate")) or str(d.get("capacity", "")).strip() == "":
+        out["capacity"] = ESTIMATE["capacity"].get(basis, ESTIMATE["capacity"]["service"])
+        est["capacity"] = out["capacity"]
+
+    # Current owner pay (what they actually take now)
+    if _truthy(d.get("salary_estimate")) or str(d.get("salary", "")).strip() == "":
+        out["salary"] = ESTIMATE["salary_current"]
+        est["salary"] = ESTIMATE["salary_current"]
+
+    # Target owner pay (what they want to take)
+    if _truthy(d.get("salary_target_estimate")) or str(d.get("salary_target", "")).strip() == "":
+        # If they typed a current salary > 0 and left target blank, default target to current.
+        cur = _f(out.get("salary"), 0)
+        out["salary_target"] = cur if cur > 0 else ESTIMATE["salary_target"]
+        est["salary_target"] = out["salary_target"]
+    else:
+        out["salary_target"] = _f(d.get("salary_target"), 0)
+
+    out["costs"] = _f(out.get("costs"), 0)
+    out["salary"] = _f(out.get("salary"), 0)
+    out["salary_target"] = _f(out.get("salary_target"), 0)
+    out["capacity"] = _f(out.get("capacity"), 1)
+    out["price"] = _f(out.get("price"), 0)
+    out["years"] = _f(out.get("years"), 0)
+    out["weeks"] = _f(out.get("weeks"), 46)
+    out["duration"] = _f(out.get("duration"), 1)
+    out["no_pay_reasons"] = _reasons(d)
+    out["estimates"] = est
+    return out, est
+
 def compute(d):
+    d, estimates = apply_estimates(d)
     basis = d.get("basis", "service")               # service | hour | month
     price = float(d["price"])
     years = float(d["years"])
     weeks = float(d["weeks"])
-    costs_y = float(d["costs"]) * 12
-    salary_y = float(d["salary"]) * 12
+    costs_m = float(d["costs"])
+    salary_now_m = float(d["salary"])               # what they take home now
+    salary_target_m = float(d["salary_target"])     # what they want to take home
+    # If target is blank/zero but they currently pay themselves, use current as target.
+    if salary_target_m <= 0 and salary_now_m > 0:
+        salary_target_m = salary_now_m
+    # If both are zero and they didn't ask for an estimate, still use the working estimate
+    # so the floor reflects a living wage target rather than "expenses only".
+    if salary_target_m <= 0:
+        salary_target_m = ESTIMATE["salary_target"]
+        estimates = dict(estimates)
+        estimates["salary_target"] = salary_target_m
+
+    costs_y = costs_m * 12
+    salary_now_y = salary_now_m * 12
+    salary_target_y = salary_target_m * 12
     vat = bool(d.get("vat"))
     if basis == "month":
         cap_y = float(d["capacity"]) * 12 * weeks / 52        # client-months a year
@@ -29,38 +131,82 @@ def compute(d):
         cap_y = float(d["capacity"]) * weeks
         hrs_job, unit = float(d["duration"]), "service"
     net = price / (1 + VAT) if vat else price                   # what you keep, before VAT
-    need = costs_y + salary_y
+
+    # Business expenses and owner pay are separate.
+    # Break-even covers costs only. Floor covers costs + TARGET owner pay.
+    # Recommended adds the buffer for tax, leave, slow months and reinvestment.
+    need_costs = costs_y
+    need_target = costs_y + salary_target_y
+    need_now = costs_y + salary_now_y
+
     gross_full = net * cap_y
     gross_real = net * cap_y * UTILISATION
     hours_real = hrs_job * cap_y * UTILISATION
     true_hourly = (gross_real - costs_y) / hours_real if hours_real else 0
-    breakeven = costs_y / (cap_y * UTILISATION)
-    floor = need / (cap_y * UTILISATION)
+    breakeven = need_costs / (cap_y * UTILISATION) if cap_y else 0
+    floor = need_target / (cap_y * UTILISATION) if cap_y else 0
     rec = floor * (1 + BUFFER)
     up = experience_uplift(years)
     prem = rec * (1 + up)
     g = lambda x: r10(x * (1 + VAT)) if vat else r10(x)    # price as charged to client
     per = (lambda v: v / weeks) if basis != "month" else (lambda v: v / 12 / (weeks / 52))
-    jobs_now = need / net if net else float("inf")
-    jobs_rec = need / rec
+    jobs_now = need_target / net if net else float("inf")
+    jobs_rec = need_target / rec if rec else float("inf")
+    jobs_costs_only = need_costs / net if net else float("inf")
     cap_label = "per month" if basis == "month" else "per week"
     cap = float(d["capacity"])
     noun = {"month": "clients", "hour": "billable hours"}.get(basis, "bookings")
-    res = dict(noun=noun, noun1={"month": "client", "hour": "hour"}.get(basis, "booking"),
+    noun1 = {"month": "client", "hour": "hour"}.get(basis, "booking")
+
+    # Gap to target owner pay at current price
+    surplus_after_costs = gross_real - costs_y
+    owner_pay_afforded_y = max(0.0, surplus_after_costs)
+    owner_pay_afforded_m = owner_pay_afforded_y / 12
+    pay_gap_m = max(0.0, salary_target_m - owner_pay_afforded_m)
+    pay_gap_y = pay_gap_m * 12
+    # Extra clients/bookings needed at current price to hit target pay
+    extra_jobs_y = (pay_gap_y / net) if net and pay_gap_y > 0 else 0.0
+    extra_jobs = round(per(extra_jobs_y), 1) if extra_jobs_y else 0.0
+    # Extra rand per job needed at current volume to hit target pay
+    realistic_jobs = cap_y * UTILISATION
+    extra_per_job = r10(pay_gap_y / realistic_jobs) if realistic_jobs and pay_gap_y > 0 else 0
+
+    reasons = d.get("no_pay_reasons") or []
+    reason_labels = [REASON_LABELS[r] for r in reasons if r in REASON_LABELS]
+    unpaid = salary_now_m <= 0
+    low_pay = (not unpaid) and salary_target_m > 0 and salary_now_m < salary_target_m * 0.5
+
+    res = dict(
+        noun=noun, noun1=noun1,
         basis=basis, unit=unit, cap_label=cap_label, vat=vat, price=price, net_price=round(net),
         capacity=cap, years=years, weeks=weeks,
+        costs_m=round(costs_m), salary_now_m=round(salary_now_m), salary_target_m=round(salary_target_m),
         true_hourly=round(true_hourly), breakeven=g(breakeven), floor=g(floor),
         recommended=g(rec), premium=g(prem), uplift_pct=int(up * 100),
         needed_now=round(per(jobs_now), 1), needed_rec=round(per(jobs_rec), 1),
+        needed_costs_only=round(per(jobs_costs_only), 1),
         capacity_pct_now=round(per(jobs_now) / cap * 100) if cap else 0,
         capacity_pct_rec=round(per(jobs_rec) / cap * 100) if cap else 0,
-        revenue_real=round(gross_real), need=round(need), gap=round(need - gross_real + 0),
+        revenue_real=round(gross_real),
+        need=round(need_target), need_costs=round(need_costs), need_now=round(need_now),
+        gap=round(need_target - gross_real),
+        owner_pay_afforded_m=round(owner_pay_afforded_m),
+        pay_gap_m=round(pay_gap_m),
+        extra_jobs=extra_jobs,
+        extra_per_job=extra_per_job,
+        unpaid=unpaid, low_pay=low_pay,
+        reasons=reasons, reason_labels=reason_labels,
+        estimates=estimates,
         utilisation=int(UTILISATION * 100), buffer=int(BUFFER * 100),
     )
     if price < res["breakeven"]:
         v, tone = f"You are losing money on every {res['noun1']}", "red"
     elif price < res["floor"]:
-        v, tone = "You are underpriced", "amber"
+        v, tone = "You cover costs, but you are not paying yourself enough", "amber"
+    elif unpaid and pay_gap_m <= 0:
+        v, tone = "You could pay yourself, but you are choosing not to", "amber"
+    elif unpaid or pay_gap_m > 0:
+        v, tone = "You cover costs, but you are not paying yourself enough", "amber"
     elif price < res["recommended"]:
         v, tone = "You cover the basics, with no room to breathe", "amber"
     elif price <= res["premium"]:
@@ -68,6 +214,14 @@ def compute(d):
     else:
         v, tone = "You are priced above your premium mark", "blue"
     res.update(verdict=v, tone=tone)
+
+    # Write resolved values back so the report can show estimate labels from input.
+    d["costs"] = costs_m
+    d["salary"] = salary_now_m
+    d["salary_target"] = salary_target_m
+    d["capacity"] = cap
+    d["estimates"] = estimates
+    d["no_pay_reasons"] = reasons
     return res
 
 def market_position(res, mk):
@@ -83,18 +237,54 @@ def market_position(res, mk):
 def recommendations(res, mk, pos, service, offer=None):
     recs = []
     p = res["price"]
-    if p < res["floor"]:
+    target = res["salary_target_m"]
+    reasons = res.get("reason_labels") or []
+    reason_txt = ""
+    if reasons:
+        if len(reasons) == 1:
+            reason_txt = reasons[0]
+        elif len(reasons) == 2:
+            reason_txt = f"{reasons[0]} and {reasons[1]}"
+        else:
+            reason_txt = ", ".join(reasons[:-1]) + f", and {reasons[-1]}"
+
+    if res["unpaid"] or res["pay_gap_m"] > 0:
+        why = f" because of {reason_txt}" if reason_txt else ""
+        title = "Pay yourself on purpose"
+        if res["pay_gap_m"] <= 0:
+            body = (
+                f"You are not paying yourself{why}. After business costs, your current price already leaves about "
+                f"R{res['owner_pay_afforded_m']:,} a month, which covers the R{target:,} you want. Decide a fixed owner pay, "
+                f"take it first, and treat reinvestment or home costs as a separate planned amount. "
+                f"Business costs and owner pay are separate."
+            )
+        else:
+            bits = []
+            if res["extra_jobs"]:
+                bits.append(f"{res['extra_jobs']} more {res['noun']} {res['cap_label']}")
+            if res["extra_per_job"]:
+                bits.append(f"R{res['extra_per_job']:,} more per {res['noun1']}")
+            how = " or ".join(bits) if bits else f"a move toward R{res['recommended']:,}"
+            body = (
+                f"You are not paying yourself{why}. After business costs, your current price leaves about "
+                f"R{res['owner_pay_afforded_m']:,} a month for you. To take home R{target:,} a month you need "
+                f"{how}. Business costs and owner pay are separate: covering rent and tools is not the same as paying yourself."
+            )
+        recs.append((title, body))
+    elif p < res["floor"]:
         recs.append(("Move to your recommended price in two steps",
             f"Go to R{(p + res['recommended']) // 2:,.0f} for new clients now and R{res['recommended']:,} in 8 weeks. Tell existing clients 30 days ahead, with the reason in one line."))
     else:
         recs.append(("Hold your price and stop discounting",
-            f"Your R{p:,.0f} covers your costs and salary. Protect it: replace discounts with a paid add-on that raises the value of each {res['noun1']}."))
+            f"Your R{p:,.0f} covers your costs and the R{target:,} a month you want to pay yourself. Protect it: replace discounts with a paid add-on that raises the value of each {res['noun1']}."))
+
     if res["capacity_pct_now"] > 85:
         recs.append(("You are fully booked and still short",
-            f"At today's price you need {res['needed_now']} {res['noun']} {res['cap_label']}, which is {res['capacity_pct_now']}% of your capacity. Raising the price is the only fix that does not cost you more hours."))
+            f"At today's price you need {res['needed_now']} {res['noun']} {res['cap_label']} to hit your target pay, which is {res['capacity_pct_now']}% of your capacity. Raising the price is the only fix that does not cost you more hours."))
     else:
         recs.append(("Fill the gap before you add more services" if res["basis"]!="month" else "Fill your client list before you add more services",
             f"At the recommended price you need {res['needed_rec']} {res['noun']} {res['cap_label']} ({res['capacity_pct_rec']}% of capacity). " + "Put your effort into a steady flow of new work: " + ("rebook every client before they leave." if res['basis'] != 'month' else "ask every new client for a referral in their second month.")))
+
     if pos and pos["diff_pct"] < -10:
         recs.append(("The local market supports a higher price",
             f"You sit {pos['text']} for {service}. Use your {int(res['years'])} years of experience as the reason: show results, reviews and before-and-after proof next to your price." if res['basis'] == 'service' else f"You sit {pos['text']} for {service}. Use your {int(res['years'])} years of experience as the reason: put client results and testimonials next to your price."))
@@ -107,7 +297,7 @@ def recommendations(res, mk, pos, service, offer=None):
     else:
         recs.append(("Collect proof as you go",
             "Ask every happy client for a review and a photo or result you can share. Proof is what lets you raise your price next year without losing clients."))
-    return recs
+    return recs[:3]
 
 
 # ---------- Premium offer (Hormozi value equation) ----------

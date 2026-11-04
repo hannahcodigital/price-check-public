@@ -29,8 +29,23 @@ def index():
 
 @app.post("/api/analyze")
 def analyze():
-    d = request.get_json(force=True)
+    raw = request.get_json(force=True)
+    # Resolve "I'm not sure" estimates and normalise owner-pay fields before computing.
+    d, _est = engine.apply_estimates(raw)
+    d["vat"] = bool(raw.get("vat")) if not isinstance(raw.get("vat"), str) else raw.get("vat") in ("1", "true", "True")
+    # Preserve optional text fields from the raw payload.
+    for k in ("service", "area", "dream", "proof", "speed", "pain", "email", "basis"):
+        if k in raw and raw[k] is not None:
+            d[k] = raw[k]
+    d["research"] = raw.get("research", True)
     res = engine.compute(d)
+    # Keep the stored input aligned with what the engine actually used.
+    d["costs"] = res["costs_m"]
+    d["salary"] = res["salary_now_m"]
+    d["salary_target"] = res["salary_target_m"]
+    d["capacity"] = res["capacity"]
+    d["estimates"] = res.get("estimates") or {}
+    d["no_pay_reasons"] = res.get("reasons") or []
     mk = research.research(d["service"], d["area"], unit=res["basis"]) if d.get("research", True) else None
     pos = engine.market_position(res, mk)
     offer = engine.premium_offer(res, d)

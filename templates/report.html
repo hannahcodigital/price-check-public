@@ -1,5 +1,7 @@
 {% set s=r.res %}{% set m=r.market %}{% set i=r.input %}
+{% set est=s.estimates if s.estimates is defined else (i.estimates if i.estimates is defined else {}) %}
 {% macro R(x) %}R{{ "{:,.0f}".format(x|float) }}{% endmacro %}
+{% macro est_tag(key) %}{% if est and key in est %} <em style="font-style:normal;font-size:11px;letter-spacing:.04em;text-transform:uppercase;opacity:.7">(estimated)</em>{% endif %}{% endmacro %}
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pricing report: {{ i.service }} | Hannah &amp; Co</title><link rel="stylesheet" href="/static/base.css">
 <style>
@@ -16,6 +18,8 @@
 h2{font-size:24px;color:var(--ox);margin:28px 0 10px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .stats div{border-top:1px solid var(--ch);padding-top:8px;font-size:13px}.stats b{display:block;font:400 24px PF,serif}
+.gap{background:#efe2d2;border-left:4px solid var(--ox);padding:14px 16px;font-size:14.5px;margin:14px 0}
+.gap b{display:block;font-size:15px;margin-bottom:4px}
 table{width:100%;border-collapse:collapse;font-size:12.5px}th{text-align:left;font-weight:500;border-bottom:1px solid var(--ch);padding:6px 4px}
 td{border-bottom:1px solid var(--ln);padding:6px 4px;vertical-align:top}td a{color:var(--ox);word-break:break-all}
 .thin{background:#efe2d2;border-left:4px solid var(--ox);padding:12px 14px;font-size:14px}
@@ -38,18 +42,55 @@ td{border-bottom:1px solid var(--ln);padding:6px 4px;vertical-align:top}td a{col
 <div style="text-align:right;font-size:12.5px">{{ i.service|capitalize }} · {{ i.area }}<br>{{ r.created }}</div></div>
 {% if not pdf %}<div class="tools"><a class="btn" href="/report/{{ r.id }}.pdf">Download PDF</a><a class="btn ghost" href="/">New check</a></div>{% endif %}
 <div class="verdict"><span class="pill">Your verdict</span><h1>{{ s.verdict }}.</h1>
-<p>You charge {{ R(s.price) }} per {{ s.unit }}{% if s.vat %} incl. VAT{% endif %}. To pay yourself {{ R(i.salary) }} a month and cover {{ R(i.costs) }} in costs, your business needs at least {{ R(s.floor) }}.
+<p>You charge {{ R(s.price) }} per {{ s.unit }}{% if s.vat %} incl. VAT{% endif %}. Business costs are {{ R(s.costs_m) }} a month{{ est_tag('costs') }}. You currently pay yourself {{ R(s.salary_now_m) }} a month{{ est_tag('salary') }}, and you want {{ R(s.salary_target_m) }}{{ est_tag('salary_target') }}. Your floor price (costs + the pay you want) is {{ R(s.floor) }}.
 {% if r.pos %} Locally you sit {{ r.pos.text }}.{% endif %}</p></div>
+
+{% if s.unpaid or s.pay_gap_m > 0 %}
+{% set reasons = s.reason_labels or [] %}
+<div class="gap">
+<b>Why you are not paying yourself enough</b>
+{% if reasons %}
+You told us why: {{ reasons[0] }}{% if reasons|length == 2 %} and {{ reasons[1] }}{% elif reasons|length > 2 %}{% for x in reasons[1:-1] %}, {{ x }}{% endfor %}, and {{ reasons[-1] }}{% endif %}.
+{% else %}
+After business costs, there is not enough left at your current price to pay yourself what you want.
+{% endif %}
+At today's price, about {{ R(s.owner_pay_afforded_m) }} a month is left for you after business costs.
+{% if s.pay_gap_m > 0 %}
+To take home {{ R(s.salary_target_m) }} a month you need
+{% if s.extra_jobs and s.extra_per_job %}
+{{ s.extra_jobs }} more {{ s.noun }} {{ s.cap_label }}, or {{ R(s.extra_per_job) }} more per {{ s.noun1 }}.
+{% elif s.extra_jobs %}
+{{ s.extra_jobs }} more {{ s.noun }} {{ s.cap_label }}.
+{% elif s.extra_per_job %}
+{{ R(s.extra_per_job) }} more per {{ s.noun1 }}.
+{% else %}
+a move toward the recommended price below.
+{% endif %}
+{% else %}
+That already covers the {{ R(s.salary_target_m) }} a month you want. Decide a fixed owner pay and take it first; treat reinvestment or home costs as a separate planned amount.
+{% endif %}
+Business costs and owner pay are separate: covering rent and tools does not count as paying yourself.
+</div>
+{% endif %}
+
 <div class="ladder">
-<div><span>Break-even</span><b>{{ R(s.breakeven) }}</b><span>Costs only, no salary</span></div>
-<div><span>Floor price</span><b>{{ R(s.floor) }}</b><span>Costs + your salary</span></div>
+<div><span>Break-even</span><b>{{ R(s.breakeven) }}</b><span>Business costs only</span></div>
+<div><span>Floor price</span><b>{{ R(s.floor) }}</b><span>Costs + the pay you want</span></div>
 <div class="hi"><span>Recommended</span><b>{{ R(s.recommended) }}</b><span>Floor + {{ s.buffer }}% buffer</span></div>
 <div><span>Premium</span><b>{{ R(s.premium) }}</b><span>+{{ s.uplift_pct }}% for {{ s.years|int }} yrs experience</span></div></div>
-<p style="font-size:12px;margin-top:6px">Prices per {{ s.unit }}{% if s.vat %}, including 15% VAT{% endif %}, rounded up to the nearest R10.</p>
+<p style="font-size:12px;margin-top:6px">Prices per {{ s.unit }}{% if s.vat %}, including 15% VAT{% endif %}, rounded up to the nearest R10. The buffer covers tax, leave, slow months and reinvesting. It is not a substitute for owner pay.</p>
 <h2>Your numbers</h2><div class="stats">
-<div>True hourly rate<b>{{ R(s.true_hourly) }}</b>after costs, per working hour</div>
-<div>{{ s.noun|capitalize }} needed at today's price<b>{{ s.needed_now }} {{ s.cap_label }}</b>{{ s.capacity_pct_now }}% of your capacity</div>
+<div>True hourly rate<b>{{ R(s.true_hourly) }}</b>after business costs, per working hour</div>
+<div>{{ s.noun|capitalize }} needed for your target pay<b>{{ s.needed_now }} {{ s.cap_label }}</b>{{ s.capacity_pct_now }}% of your capacity{{ est_tag('capacity') }}</div>
 <div>{{ s.noun|capitalize }} needed at recommended<b>{{ s.needed_rec }} {{ s.cap_label }}</b>{{ s.capacity_pct_rec }}% of your capacity</div></div>
+{% if est %}
+<p style="font-size:12px;margin-top:10px">Estimated fields use Hannah &amp; Co working rules (not market statistics):
+{% if 'costs' in est %} monthly business costs {{ R(est.costs) }};{% endif %}
+{% if 'capacity' in est %} capacity {{ est.capacity }};{% endif %}
+{% if 'salary' in est %} current owner pay {{ R(est.salary) }};{% endif %}
+{% if 'salary_target' in est %} target owner pay {{ R(est.salary_target) }}.{% endif %}
+</p>
+{% endif %}
 <h2>What businesses near you publish</h2><p style="font-size:12px;margin-bottom:6px">The range uses real businesses only. Guides and directories are listed separately as reference.</p>
 {% if m and not m.thin %}
 <div class="bar">{% set lo=[m.low, s.price]|min %}{% set hi=[m.high, s.price]|max %}{% set sp=(hi-lo) or 1 %}
@@ -73,5 +114,5 @@ td{border-bottom:1px solid var(--ln);padding:6px 4px;vertical-align:top}td a{col
 <div class="cta"><div><div class="cap" style="color:var(--ox)">Hannah &amp; Co Growth Check · R1,500</div><h3>Want help making the new price stick?</h3>
 <p style="font-size:14px">A one-on-one session with Hannah to go through this report, your offer and how to tell your clients.</p></div>
 <a class="btn" href="/#growth-check">Book my Growth Check</a></div>
-<p class="how"><b>How we worked this out.</b> Capacity: {{ s.capacity|int if s.capacity==s.capacity|int else s.capacity }} {% if s.basis=='month' %}clients at once{% else %}{{ s.noun }} {{ s.cap_label }}{% endif %}{% if s.basis!='month' %} for {{ s.weeks|int }} weeks a year{% endif %}. We assume {{ s.utilisation }}% of that capacity gets booked and paid, because no diary is full all year. Break-even = yearly costs ÷ realistic bookings. Floor = (yearly costs + yearly salary) ÷ realistic bookings. Recommended = floor + {{ s.buffer }}% for income tax, leave, slow months and reinvesting. Premium adds an experience uplift: 0% under 2 years, 10% for 2 to 5, 20% for 5 to 10, 30% for 10 or more. These are Hannah &amp; Co working rules, not market statistics.{% if s.vat %} VAT is removed before working out what you keep, then added back to the prices shown.{% endif %} This report is guidance, not financial or tax advice.</p>
+<p class="how"><b>How we worked this out.</b> Capacity: {{ s.capacity|int if s.capacity==s.capacity|int else s.capacity }} {% if s.basis=='month' %}clients at once{% else %}{{ s.noun }} {{ s.cap_label }}{% endif %}{% if s.basis!='month' %} for {{ s.weeks|int }} weeks a year{% endif %}. We assume {{ s.utilisation }}% of that capacity gets booked and paid, because no diary is full all year. Break-even = yearly business costs ÷ realistic bookings. Floor = (yearly business costs + the yearly pay you want) ÷ realistic bookings. Recommended = floor + {{ s.buffer }}% for income tax, leave, slow months and reinvesting. Owner pay is never treated as a business expense. Premium adds an experience uplift: 0% under 2 years, 10% for 2 to 5, 20% for 5 to 10, 30% for 10 or more. These are Hannah &amp; Co working rules, not market statistics.{% if s.vat %} VAT is removed before working out what you keep, then added back to the prices shown.{% endif %} This report is guidance, not financial or tax advice.</p>
 </div>{% if autoprint %}<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),400))</script>{% endif %}</body></html>
